@@ -6,28 +6,14 @@ import "./lib/MinterRoles.sol";
 import "./lib/IERC20.sol";
 import "./lib/IERC1400.sol";
 
-// contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer, MinterRole {
 contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     using SafeMath for uint256;
-
-    // Token
-    // string internal constant ERC1400_INTERFACE_NAME = "ERC1400Token";
-    // string internal constant ERC20_INTERFACE_NAME = "ERC20Token";
-
-    // Token extensions
-    // string internal constant ERC1400_TOKENS_CHECKER = "ERC1400TokensChecker";
-    // string internal constant ERC1400_TOKENS_VALIDATOR = "ERC1400TokensValidator";
-
-    // User extensions
-    // string internal constant ERC1400_TOKENS_SENDER = "ERC1400TokensSender";
-    // string internal constant ERC1400_TOKENS_RECIPIENT = "ERC1400TokensRecipient";
 
     /************************************* Token description ****************************************/
     string internal _name;
     string internal _symbol;
     uint256 internal _granularity;
     uint256 internal _totalSupply;
-    // bool internal _migrated;
     /************************************************************************************************/
 
     /**************************************** Token behaviours **************************************/
@@ -56,50 +42,49 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     /************************************************************************************************/
 
     /*********************************** Partitions  mappings ***************************************/
-    // List of partitions.
+    // All partitions.
     bytes32[] internal _totalPartitions;
 
-    // Mapping from partition to their index.
+    // partition => index of _totalPartitions
     mapping(bytes32 => uint256) internal _indexOfTotalPartitions;
 
-    // Mapping from partition to global balance of corresponding partition.
+    // partition => total supply
     mapping(bytes32 => uint256) internal _totalSupplyByPartition;
 
-    // Mapping from tokenHolder to their partitions.
+    // tokenHolder => partitions (partition[])
     mapping(address => bytes32[]) internal _partitionsOf;
 
-    // Mapping from (tokenHolder, partition) to their index.
+    // tokenHolder => partition => index
     mapping(address => mapping(bytes32 => uint256)) internal _indexOfPartitionsOf;
 
-    // Mapping from (tokenHolder, partition) to balance of corresponding partition.
+    // tokenHolder => partition => balance
     mapping(address => mapping(bytes32 => uint256)) internal _balanceOfByPartition;
 
-    // List of token default partitions (for ERC20 compatibility).
+    // default partitions (erc20)
     bytes32[] internal _defaultPartitions;
     /************************************************************************************************/
 
     /********************************* Global operators mappings ************************************/
-    // Mapping from (operator, tokenHolder) to authorized status. [TOKEN-HOLDER-SPECIFIC]
+    // operator => tokenHolder => auth | No-auth
     mapping(address => mapping(address => bool)) internal _authorizedOperator;
 
-    // Array of controllers. [GLOBAL - NOT TOKEN-HOLDER-SPECIFIC]
+    // Array of controllers.
     address[] internal _controllers;
 
-    // Mapping from operator to controller status. [GLOBAL - NOT TOKEN-HOLDER-SPECIFIC]
+    // address => isController | notController
     mapping(address => bool) internal _isController;
     /************************************************************************************************/
 
     /******************************** Partition operators mappings **********************************/
-    // Mapping from (partition, tokenHolder, spender) to allowed value. [TOKEN-HOLDER-SPECIFIC]
+    // partition => tokenHolder => spender => allowed amount
     mapping(bytes32 => mapping(address => mapping(address => uint256))) internal _allowedByPartition;
 
-    // Mapping from (tokenHolder, partition, operator) to 'approved for partition' status. [TOKEN-HOLDER-SPECIFIC]
-    mapping(address => mapping(bytes32 => mapping(address => bool))) internal _authorizedOperatorByPartition;
+    // tokenHolder => partition => operator =>  auth | no-auth
+    mapping(address => mapping(bytes32 => mapping(address => bool))) internal _authorizedOperatorByPartition; 
 
-    // Mapping from partition to controllers for the partition. [NOT TOKEN-HOLDER-SPECIFIC]
+    // partition => controller array
     mapping(bytes32 => address[]) internal _controllersByPartition;
-
-    // Mapping from (partition, operator) to PartitionController status. [NOT TOKEN-HOLDER-SPECIFIC]
+    // partition => controller => is | not
     mapping(bytes32 => mapping(address => bool)) internal _isControllerByPartition;
     /************************************************************************************************/
 
@@ -111,13 +96,6 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         require(_isIssuable, "55"); // 0x55	funds locked (lockup period)
         _;
     }
-    /**
-     * @dev Modifier to make a function callable only when the contract is not migrated.
-     */
-    // modifier isNotMigratedToken() {
-    //     require(!_migrated, "54"); // 0x54	transfers halted (contract paused)
-    //     _;
-    // }
     /**
      * @dev Modifier to verifiy if sender is a minter.
      */
@@ -133,6 +111,23 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         address indexed owner,
         address indexed spender,
         uint256 value
+    );
+      // Controller Events
+    event ControllerTransfer(
+        address _controller,
+        address indexed _from,
+        address indexed _to,
+        uint256 _value,
+        bytes _data,
+        bytes _operatorData
+    );
+
+    event ControllerRedemption(
+        address _controller,
+        address indexed _tokenHolder,
+        uint256 _value,
+        bytes _data,
+        bytes _operatorData
     );
 
     /************************************************************************************************/
@@ -934,25 +929,6 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
             toPartition = _getDestinationPartition(fromPartition, data);
         }
 
-        // _callSenderExtension(
-        //     fromPartition,
-        //     operator,
-        //     from,
-        //     to,
-        //     value,
-        //     data,
-        //     operatorData
-        // );
-        // _callTokenExtension(
-        //     fromPartition,
-        //     operator,
-        //     from,
-        //     to,
-        //     value,
-        //     data,
-        //     operatorData
-        // );
-
         _removeTokenFromPartition(from, fromPartition, value);
         _transferWithData(from, to, value);
         _addTokenToPartition(to, toPartition, value);
@@ -1077,12 +1053,8 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         bytes32 partition,
         uint256 value
     ) internal {
-        _balanceOfByPartition[from][partition] = _balanceOfByPartition[from][
-            partition
-        ]
-            .sub(value);
-        _totalSupplyByPartition[partition] = _totalSupplyByPartition[partition]
-            .sub(value);
+        _balanceOfByPartition[from][partition] = _balanceOfByPartition[from][partition].sub(value);
+        _totalSupplyByPartition[partition] = _totalSupplyByPartition[partition].sub(value);
 
         // If the total supply is zero, finds and deletes the partition.
         if (_totalSupplyByPartition[partition] == 0) {
@@ -1130,19 +1102,13 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
                 _partitionsOf[to].push(partition);
                 _indexOfPartitionsOf[to][partition] = _partitionsOf[to].length;
             }
-            _balanceOfByPartition[to][partition] = _balanceOfByPartition[to][
-                partition
-            ]
-                .add(value);
+            _balanceOfByPartition[to][partition] = _balanceOfByPartition[to][partition].add(value);
 
             if (_indexOfTotalPartitions[partition] == 0) {
                 _totalPartitions.push(partition);
                 _indexOfTotalPartitions[partition] = _totalPartitions.length;
             }
-            _totalSupplyByPartition[partition] = _totalSupplyByPartition[
-                partition
-            ]
-                .add(value);
+            _totalSupplyByPartition[partition] = _totalSupplyByPartition[partition].add(value);
         }
     }
 
@@ -1154,6 +1120,20 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     function _isMultiple(uint256 value) internal view returns (bool) {
         return (value.div(_granularity).mul(_granularity) == value);
     }
+
+    function controllerTransfer(address _from, address _to, uint256 _value, bytes calldata _data, bytes calldata _operatorData) external{
+        require(_isController[msg.sender]);
+        _transferByDefaultPartitions(msg.sender, _from, _to, _value, _data);
+        emit ControllerTransfer(msg.sender, _from, _to, _value, _data, _operatorData);
+
+    }
+    function controllerRedeem(address _tokenHolder, uint256 _value, bytes calldata _data, bytes calldata _operatorData) external{
+        require(_isController[msg.sender]);
+        _redeemByDefaultPartitions(msg.sender, _tokenHolder, _value, _data);
+        emit ControllerRedemption(msg.sender, _tokenHolder, _value, _data, _operatorData);
+
+    }
+
 
     /************************************************************************************************/
 
@@ -1346,28 +1326,8 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         uint256 value,
         bytes memory data
     ) internal {
-        // _callTokenExtension(
-        //     toPartition,
-        //     operator,
-        //     address(0),
-        //     to,
-        //     value,
-        //     data,
-        //     ""
-        // );
-
         _issue(operator, to, value, data);
         _addTokenToPartition(to, toPartition, value);
-
-        // _callRecipientExtension(
-        //     toPartition,
-        //     operator,
-        //     address(0),
-        //     to,
-        //     value,
-        //     data,
-        //     ""
-        // );
 
         emit IssuedByPartition(toPartition, operator, to, value, data, "");
     }
@@ -1418,25 +1378,6 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         bytes memory operatorData
     ) internal {
         require(_balanceOfByPartition[from][fromPartition] >= value, "52"); // 0x52	insufficient balance
-
-        // _callSenderExtension(
-        //     fromPartition,
-        //     operator,
-        //     from,
-        //     address(0),
-        //     value,
-        //     data,
-        //     operatorData
-        // );
-        // _callTokenExtension(
-        //     fromPartition,
-        //     operator,
-        //     from,
-        //     address(0),
-        //     value,
-        //     data,
-        //     operatorData
-        // );
 
         _removeTokenFromPartition(from, fromPartition, value);
         _redeem(operator, from, value, data);
@@ -1585,14 +1526,8 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         bytes32 partition,
         address[] memory operators
     ) internal {
-        for (
-            uint256 i = 0;
-            i < _controllersByPartition[partition].length;
-            i++
-        ) {
-            _isControllerByPartition[partition][
-                _controllersByPartition[partition][i]
-            ] = false;
+        for ( uint256 i = 0; i < _controllersByPartition[partition].length; i++) {
+            _isControllerByPartition[partition][_controllersByPartition[partition][i]] = false;
         }
         for (uint256 j = 0; j < operators.length; j++) {
             _isControllerByPartition[partition][operators[j]] = true;

@@ -217,7 +217,7 @@ src=./ERC1400.sol
 output=output
 
 build(){
-    _run -x solc-0.5.0 --bin $src -o ${output} --overwrite
+    _run -x -s solc-0.5.0 --bin $src -o ${output} --overwrite
 }
 
 # write your code above
