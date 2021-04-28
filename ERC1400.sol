@@ -25,10 +25,10 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     /************************************************************************************************/
 
     /********************************** ERC20 Token mappings ****************************************/
-    // Mapping from tokenHolder to balance.
+    // tokenHolder => balance
     mapping(address => uint256) internal _balances;
 
-    // Mapping from (tokenHolder, spender) to allowed value.
+    // tokenHolder => spender => amount value
     mapping(address => mapping(address => uint256)) internal _allowed;
     /************************************************************************************************/
 
@@ -37,7 +37,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         string docURI;
         bytes32 docHash;
     }
-    // Mapping for token URIs.
+    // partition => Doc
     mapping(bytes32 => Doc) internal _documents;
     /************************************************************************************************/
 
@@ -90,14 +90,14 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /***************************************** Modifiers ********************************************/
     /**
-     * @dev Modifier to verify if token is issuable.
+     * if token is issuable.
      */
     modifier isIssuableToken() {
         require(_isIssuable, "55"); // 0x55	funds locked (lockup period)
         _;
     }
     /**
-     * @dev Modifier to verifiy if sender is a minter.
+     * if sender is a minter.
      */
     modifier onlyMinter() {
         require(isMinter(msg.sender) || isOwner());
@@ -105,14 +105,23 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
     /************************************************************************************************/
 
-    /**************************** Events (additional - not mandatory) *******************************/
+    /**************************** Events *******************************/
     event ApprovalByPartition(
         bytes32 indexed partition,
         address indexed owner,
         address indexed spender,
         uint256 value
     );
-      // Controller Events
+
+    // TODO emit Transfer
+    event Transfer(
+        bytes32 indexed _partition,
+        address indexed _from,
+        address indexed _to,
+        uint256 _value
+    );
+
+    // Controller Events
     event ControllerTransfer(
         address _controller,
         address indexed _from,
@@ -133,13 +142,12 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     /************************************************************************************************/
 
     /**
-     * @dev Initialize ERC1400 + register the contract implementation in ERC1820Registry.
-     * @param name Name of the token.
-     * @param symbol Symbol of the token.
-     * @param granularity Granularity of the token.
-     * @param controllers Array of initial controllers.
-     * @param defaultPartitions Partitions chosen by default, when partition is
-     * not specified, like the case ERC20 tranfers.
+     * constructor
+     * @param name: token name
+     * @param symbol: token symbol
+     * @param granularity: granularity of the token.
+     * @param controllers: array of initial controllers.
+     * @param defaultPartitions: default partitions,for ERC20
      */
     constructor(
         string memory name,
@@ -167,7 +175,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     /************************************************************************************************/
 
     /**
-     * @dev Get the total number of issued tokens.
+     * total amount of token
      * @return Total supply of tokens currently in circulation.
      */
     function totalSupply() external view returns (uint256) {
@@ -175,7 +183,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Get the balance of the account with address 'tokenHolder'.
+     * Get the balance of the account with address 'tokenHolder'.
      * @param tokenHolder Address for which the balance is returned.
      * @return Amount of token held by 'tokenHolder' in the token contract.
      */
@@ -184,7 +192,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Transfer token for a specified address.
+     * Transfer token for a specified address.
      * @param to The address to transfer to.
      * @param value The value to be transferred.
      * @return A boolean that indicates if the operation was successful.
@@ -195,7 +203,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Check the value of tokens that an owner allowed to a spender.
+     * Check the value of tokens that an owner allowed to a spender.
      * @param owner address The address which owns the funds.
      * @param spender address The address which will spend the funds.
      * @return A uint256 specifying the value of tokens still available for the spender.
@@ -209,7 +217,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Approve the passed address to spend the specified amount of tokens on behalf of 'msg.sender'.
+     * Approve the passed address to spend the specified amount of tokens on behalf of 'msg.sender'.
      * @param spender The address which will spend the funds.
      * @param value The amount of tokens to be spent.
      * @return A boolean that indicates if the operation was successful.
@@ -222,7 +230,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Transfer tokens from one address to another.
+     * Transfer tokens from one address to another.
      * @param from The address which you want to transfer tokens from.
      * @param to The address which you want to transfer to.
      * @param value The amount of tokens to be transferred.
@@ -255,7 +263,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************* Document Management **************************************/
     /**
-     * @dev Access a document associated with the token.
+     * Access a document associated with the token.
      * @param name Short name (represented as a bytes32) associated to the document.
      * @return Requested document + document hash.
      */
@@ -269,7 +277,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Associate a document with the token.
+     * Associate a document with the token.
      * @param name Short name (represented as a bytes32) associated to the document.
      * @param uri Document content.
      * @param documentHash Hash of the document [optional parameter].
@@ -288,7 +296,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************** Token Information ***************************************/
     /**
-     * @dev Get balance of a tokenholder for a specific partition.
+     * Get balance of a tokenholder for a specific partition.
      * @param partition Name of the partition.
      * @param tokenHolder Address for which the balance is returned.
      * @return Amount of token of partition 'partition' held by 'tokenHolder' in the token contract.
@@ -302,7 +310,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Get partitions index of a tokenholder.
+     * Get partitions index of a tokenholder.
      * @param tokenHolder Address for which the partitions index are returned.
      * @return Array of partitions index of 'tokenHolder'.
      */
@@ -318,7 +326,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /****************************************** Transfers *******************************************/
     /**
-     * @dev Transfer the amount of tokens from the address 'msg.sender' to the address 'to'.
+     * Transfer the amount of tokens from the address 'msg.sender' to the address 'to'.
      * @param to Token recipient.
      * @param value Number of tokens to transfer.
      * @param data Information attached to the transfer, by the token holder.
@@ -332,7 +340,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Transfer the amount of tokens on behalf of the address 'from' to the address 'to'.
+     * Transfer the amount of tokens on behalf of the address 'from' to the address 'to'.
      * @param from Token holder (or 'address(0)' to set from to 'msg.sender').
      * @param to Token recipient.
      * @param value Number of tokens to transfer.
@@ -353,7 +361,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /********************************** Partition Token Transfers ***********************************/
     /**
-     * @dev Transfer tokens from a specific partition.
+     * Transfer tokens from a specific partition.
      * @param partition Name of the partition.
      * @param to Token recipient.
      * @param value Number of tokens to transfer.
@@ -379,7 +387,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Transfer tokens from a specific partition through an operator.
+     * Transfer tokens from a specific partition through an operator.
      * @param partition Name of the partition.
      * @param from Token holder.
      * @param to Token recipient.
@@ -426,7 +434,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************* Controller Operation *************************************/
     /**
-     * @dev Know if the token can be controlled by operators.
+     * Know if the token can be controlled by operators.
      * If a token returns 'false' for 'isControllable()'' then it MUST always return 'false' in the future.
      * @return bool 'true' if the token can still be controlled by operators, 'false' if it can't anymore.
      */
@@ -438,7 +446,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************* Operator Management **************************************/
     /**
-     * @dev Set a third party operator address as an operator of 'msg.sender' to transfer
+     * Set a third party operator address as an operator of 'msg.sender' to transfer
      * and redeem tokens on its behalf.
      * @param operator Address to set as an operator for 'msg.sender'.
      */
@@ -449,7 +457,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Remove the right of the operator address to be an operator for 'msg.sender'
+     * Remove the right of the operator address to be an operator for 'msg.sender'
      * and to transfer and redeem tokens on its behalf.
      * @param operator Address to rescind as an operator for 'msg.sender'.
      */
@@ -460,7 +468,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Set 'operator' as an operator for 'msg.sender' for a given partition.
+     * Set 'operator' as an operator for 'msg.sender' for a given partition.
      * @param partition Name of the partition.
      * @param operator Address to set as an operator for 'msg.sender'.
      */
@@ -472,7 +480,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Remove the right of the operator address to be an operator on a given
+     * Remove the right of the operator address to be an operator on a given
      * partition for 'msg.sender' and to transfer and redeem tokens on its behalf.
      * @param partition Name of the partition.
      * @param operator Address to rescind as an operator on given partition for 'msg.sender'.
@@ -488,7 +496,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************* Operator Information *************************************/
     /**
-     * @dev Indicate whether the operator address is an operator of the tokenHolder address.
+     * Indicate whether the operator address is an operator of the tokenHolder address.
      * @param operator Address which may be an operator of tokenHolder.
      * @param tokenHolder Address of a token holder which may have the operator address as an operator.
      * @return 'true' if operator is an operator of 'tokenHolder' and 'false' otherwise.
@@ -502,7 +510,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Indicate whether the operator address is an operator of the tokenHolder
+     * Indicate whether the operator address is an operator of the tokenHolder
      * address for the given partition.
      * @param partition Name of the partition.
      * @param operator Address which may be an operator of tokenHolder for the given partition.
@@ -521,7 +529,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /**************************************** Token Issuance ****************************************/
     /**
-     * @dev Know if new tokens can be issued in the future.
+     * Know if new tokens can be issued in the future.
      * @return bool 'true' if tokens can still be issued by the issuer, 'false' if they can't anymore.
      */
     function isIssuable() external view returns (bool) {
@@ -529,7 +537,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Issue tokens from default partition.
+     * Issue tokens from default partition.
      * @param tokenHolder Address for which we want to issue tokens.
      * @param value Number of tokens issued.
      * @param data Information attached to the issuance, by the issuer.
@@ -551,7 +559,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Issue tokens from a specific partition.
+     * Issue tokens from a specific partition.
      * @param partition Name of the partition.
      * @param tokenHolder Address for which we want to issue tokens.
      * @param value Number of tokens issued.
@@ -570,7 +578,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /*************************************** Token Redemption ***************************************/
     /**
-     * @dev Redeem the amount of tokens from the address 'msg.sender'.
+     * Redeem the amount of tokens from the address 'msg.sender'.
      * @param value Number of tokens to redeem.
      * @param data Information attached to the redemption, by the token holder.
      */
@@ -579,7 +587,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Redeem the amount of tokens on behalf of the address from.
+     * Redeem the amount of tokens on behalf of the address from.
      * @param from Token holder whose tokens will be redeemed (or address(0) to set from to msg.sender).
      * @param value Number of tokens to redeem.
      * @param data Information attached to the redemption.
@@ -595,7 +603,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Redeem tokens of a specific partition.
+     * Redeem tokens of a specific partition.
      * @param partition Name of the partition.
      * @param value Number of tokens redeemed.
      * @param data Information attached to the redemption, by the redeemer.
@@ -609,7 +617,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Redeem tokens of a specific partition.
+     * Redeem tokens of a specific partition.
      * @param partition Name of the partition.
      * @param tokenHolder Address for which we want to redeem tokens.
      * @param value Number of tokens redeemed
@@ -644,7 +652,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************ Token description *****************************************/
     /**
-     * @dev Get the name of the token, e.g., "MyToken".
+     * Get the name of the token, e.g., "MyToken".
      * @return Name of the token.
      */
     function name() external view returns (string memory) {
@@ -652,7 +660,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Get the symbol of the token, e.g., "MYT".
+     * Get the symbol of the token, e.g., "MYT".
      * @return Symbol of the token.
      */
     function symbol() external view returns (string memory) {
@@ -660,7 +668,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Get the number of decimals of the token.
+     * Get the number of decimals of the token.
      * @return The number of decimals of the token. For retrocompatibility, decimals are forced to 18 in ERC1400.
      */
     function decimals() external pure returns (uint8) {
@@ -668,7 +676,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Get the smallest part of the token that’s not divisible.
+     * Get the smallest part of the token that’s not divisible.
      * @return The smallest non-divisible part of the token.
      */
     function granularity() external view returns (uint256) {
@@ -676,7 +684,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Get list of existing partitions.
+     * Get list of existing partitions.
      * @return Array of all exisiting partitions.
      */
     function totalPartitions() external view returns (bytes32[] memory) {
@@ -684,7 +692,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Get the total number of issued tokens for a given partition.
+     * Get the total number of issued tokens for a given partition.
      * @param partition Name of the partition.
      * @return Total supply of tokens currently in circulation, for a given partition.
      */
@@ -700,7 +708,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /**************************************** Token behaviours **************************************/
     /**
-     * @dev Definitely renounce the possibility to control tokens on behalf of tokenHolders.
+     * Definitely renounce the possibility to control tokens on behalf of tokenHolders.
      * Once set to false, '_isControllable' can never be set to 'true' again.
      */
     function renounceControl() external onlyOwner {
@@ -708,7 +716,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Definitely renounce the possibility to issue new tokens.
+     * Definitely renounce the possibility to issue new tokens.
      * Once set to false, '_isIssuable' can never be set to 'true' again.
      */
     function renounceIssuance() external onlyOwner {
@@ -719,7 +727,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************ Token controllers *****************************************/
     /**
-     * @dev Get the list of controllers as defined by the token contract.
+     * Get the list of controllers as defined by the token contract.
      * @return List of addresses of all the controllers.
      */
     function controllers() external view returns (address[] memory) {
@@ -727,7 +735,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Get controllers for a given partition.
+     * Get controllers for a given partition.
      * @param partition Name of the partition.
      * @return Array of controllers for partition.
      */
@@ -740,7 +748,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Set list of token controllers.
+     * Set list of token controllers.
      * @param operators Controller addresses.
      */
     function setControllers(address[] calldata operators) external onlyOwner {
@@ -748,7 +756,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Set list of token partition controllers.
+     * Set list of token partition controllers.
      * @param partition Name of the partition.
      * @param operators Controller addresses.
      */
@@ -763,7 +771,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /********************************* Token default partitions *************************************/
     /**
-     * @dev Get default partitions to transfer from.
+     * Get default partitions to transfer from.
      * Function used for ERC20 retrocompatibility.
      * For example, a security token may return the bytes32("unrestricted").
      * @return Array of default partitions.
@@ -773,7 +781,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Set default partitions to transfer from.
+     * Set default partitions to transfer from.
      * Function used for ERC20 retrocompatibility.
      * @param partitions partitions to use by default when not specified.
      */
@@ -788,7 +796,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /******************************** Partition Token Allowances ************************************/
     /**
-     * @dev Check the value of tokens that an owner allowed to a spender.
+     * Check the value of tokens that an owner allowed to a spender.
      * @param partition Name of the partition.
      * @param owner address The address which owns the funds.
      * @param spender address The address which will spend the funds.
@@ -803,7 +811,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Approve the passed address to spend the specified amount of tokens on behalf of 'msg.sender'.
+     * Approve the passed address to spend the specified amount of tokens on behalf of 'msg.sender'.
      * @param partition Name of the partition.
      * @param spender The address which will spend the funds.
      * @param value The amount of tokens to be spent.
@@ -822,65 +830,9 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************************************************************************/
 
-    /************************************** Token extension *****************************************/
-    /**
-     * @dev Set token extension contract address.
-     * The extension contract can for example verify "ERC1400TokensValidator" or "ERC1400TokensChecker" interfaces.
-     * If the extension is an "ERC1400TokensValidator", it will be called everytime a transfer is executed.
-     * @param extension Address of the extension contract.
-     * @param interfaceLabel Interface label of extension contract.
-     * @param removeOldExtensionRoles If set to 'true', the roles of the old extension(minter, controller) will be removed extension.
-     * @param addMinterRoleForExtension If set to 'true', the extension contract will be added as minter.
-     * @param addControllerRoleForExtension If set to 'true', the extension contract will be added as controller.
-     */
-    // function setTokenExtension(
-    //     address extension,
-    //     string calldata interfaceLabel,
-    //     bool removeOldExtensionRoles,
-    //     bool addMinterRoleForExtension,
-    //     bool addControllerRoleForExtension
-    // ) external onlyOwner {
-    //     _setTokenExtension(
-    //         extension,
-    //         interfaceLabel,
-    //         removeOldExtensionRoles,
-    //         addMinterRoleForExtension,
-    //         addControllerRoleForExtension
-    //     );
-    // }
-
-    /************************************************************************************************/
-
-    /************************************* Token migration ******************************************/
-    /**
-     * @dev Migrate contract.
-     *
-     * ===> CAUTION: DEFINITIVE ACTION
-     *
-     * This function shall be called once a new version of the smart contract has been created.
-     * Once this function is called:
-     *  - The address of the new smart contract is set in ERC1820 registry
-     *  - If the choice is definitive, the current smart contract is turned off and can never be used again
-     *
-     * @param newContractAddress Address of the new version of the smart contract.
-     * @param definitive If set to 'true' the contract is turned off definitely.
-     */
-    // function migrate(address newContractAddress, bool definitive)
-    //     external
-    //     onlyOwner
-    // {
-    //     _migrate(newContractAddress, definitive);
-    // }
-
-    /************************************************************************************************/
-
-    /************************************************************************************************/
-    /************************************* INTERNAL FUNCTIONS ***************************************/
-    /************************************************************************************************/
-
     /**************************************** Token Transfers ***************************************/
     /**
-     * @dev Perform the transfer of tokens.
+     * Perform the transfer of tokens.
      * @param from Token holder.
      * @param to Token recipient.
      * @param value Number of tokens to transfer.
@@ -902,7 +854,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Transfer tokens from a specific partition.
+     * Transfer tokens from a specific partition.
      * @param fromPartition Partition of the tokens to transfer.
      * @param operator The address performing the transfer.
      * @param from Token holder.
@@ -933,16 +885,6 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         _transferWithData(from, to, value);
         _addTokenToPartition(to, toPartition, value);
 
-        // _callRecipientExtension(
-        //     toPartition,
-        //     operator,
-        //     from,
-        //     to,
-        //     value,
-        //     data,
-        //     operatorData
-        // );
-
         emit TransferByPartition(
             fromPartition,
             operator,
@@ -961,7 +903,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Transfer tokens from default partitions.
+     * Transfer tokens from default partitions.
      * Function used for ERC20 retrocompatibility.
      * @param operator The address performing the transfer.
      * @param from Token holder.
@@ -1013,7 +955,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Retrieve the destination partition from the 'data' field.
+     * Retrieve the destination partition from the 'data' field.
      * By convention, a partition change is requested ONLY when 'data' starts
      * with the flag: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
      * When the flag is detected, the destination tranche is extracted from the
@@ -1043,7 +985,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Remove a token from a specific partition.
+     * Remove a token from a specific partition.
      * @param from Token holder.
      * @param partition Name of the partition.
      * @param value Number of tokens to transfer.
@@ -1087,7 +1029,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Add a token to a specific partition.
+     * Add a token to a specific partition.
      * @param to Token recipient.
      * @param partition Name of the partition.
      * @param value Number of tokens to transfer.
@@ -1113,7 +1055,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Check if 'value' is multiple of the granularity.
+     * Check if 'value' is multiple of the granularity.
      * @param value The quantity that want's to be checked.
      * @return 'true' if 'value' is a multiple of the granularity.
      */
@@ -1135,123 +1077,9 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
 
-    /************************************************************************************************/
-
-    /****************************************** Hooks ***********************************************/
-    /**
-     * @dev Check for 'ERC1400TokensSender' user extension in ERC1820 registry and call it.
-     * @param partition Name of the partition (bytes32 to be left empty for transfers where partition is not specified).
-     * @param operator Address which triggered the balance decrease (through transfer or redemption).
-     * @param from Token holder.
-     * @param to Token recipient for a transfer and 0x for a redemption.
-     * @param value Number of tokens the token holder balance is decreased by.
-     * @param data Extra information.
-     * @param operatorData Extra information, attached by the operator (if any).
-     */
-    // function _callSenderExtension(
-    //     bytes32 partition,
-    //     address operator,
-    //     address from,
-    //     address to,
-    //     uint256 value,
-    //     bytes memory data,
-    //     bytes memory operatorData
-    // ) internal {
-    //     address senderImplementation;
-    //     senderImplementation = interfaceAddr(from, ERC1400_TOKENS_SENDER);
-    //     if (senderImplementation != address(0)) {
-    //         IERC1400TokensSender(senderImplementation).tokensToTransfer(
-    //             msg.data,
-    //             partition,
-    //             operator,
-    //             from,
-    //             to,
-    //             value,
-    //             data,
-    //             operatorData
-    //         );
-    //     }
-    // }
-
-    /**
-     * @dev Check for 'ERC1400TokensValidator' token extension in ERC1820 registry and call it.
-     * @param partition Name of the partition (bytes32 to be left empty for transfers where partition is not specified).
-     * @param operator Address which triggered the balance decrease (through transfer or redemption).
-     * @param from Token holder.
-     * @param to Token recipient for a transfer and 0x for a redemption.
-     * @param value Number of tokens the token holder balance is decreased by.
-     * @param data Extra information.
-     * @param operatorData Extra information, attached by the operator (if any).
-     */
-    // function _callTokenExtension(
-    //     bytes32 partition,
-    //     address operator,
-    //     address from,
-    //     address to,
-    //     uint256 value,
-    //     bytes memory data,
-    //     bytes memory operatorData
-    // ) internal {
-    //     address validatorImplementation;
-    //     validatorImplementation = interfaceAddr(
-    //         address(this),
-    //         ERC1400_TOKENS_VALIDATOR
-    //     );
-    //     if (validatorImplementation != address(0)) {
-    //         IERC1400TokensValidator(validatorImplementation).tokensToValidate(
-    //             msg.data,
-    //             partition,
-    //             operator,
-    //             from,
-    //             to,
-    //             value,
-    //             data,
-    //             operatorData
-    //         );
-    //     }
-    // }
-
-    /**
-     * @dev Check for 'ERC1400TokensRecipient' user extension in ERC1820 registry and call it.
-     * @param partition Name of the partition (bytes32 to be left empty for transfers where partition is not specified).
-     * @param operator Address which triggered the balance increase (through transfer or issuance).
-     * @param from Token holder for a transfer and 0x for an issuance.
-     * @param to Token recipient.
-     * @param value Number of tokens the recipient balance is increased by.
-     * @param data Extra information, intended for the token holder ('from').
-     * @param operatorData Extra information attached by the operator (if any).
-     */
-    // function _callRecipientExtension(
-    //     bytes32 partition,
-    //     address operator,
-    //     address from,
-    //     address to,
-    //     uint256 value,
-    //     bytes memory data,
-    //     bytes memory operatorData
-    // ) internal {
-    //     address recipientImplementation;
-    //     recipientImplementation = interfaceAddr(to, ERC1400_TOKENS_RECIPIENT);
-
-    //     if (recipientImplementation != address(0)) {
-    //         IERC1400TokensRecipient(recipientImplementation).tokensReceived(
-    //             msg.data,
-    //             partition,
-    //             operator,
-    //             from,
-    //             to,
-    //             value,
-    //             data,
-    //             operatorData
-    //         );
-    //     }
-    // }
-
-    /************************************************************************************************/
-
     /************************************* Operator Information *************************************/
     /**
-     * @dev Indicate whether the operator address is an operator of the tokenHolder address.
+     * Indicate whether the operator address is an operator of the tokenHolder address.
      * @param operator Address which may be an operator of 'tokenHolder'.
      * @param tokenHolder Address of a token holder which may have the 'operator' address as an operator.
      * @return 'true' if 'operator' is an operator of 'tokenHolder' and 'false' otherwise.
@@ -1267,7 +1095,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Indicate whether the operator address is an operator of the tokenHolder
+     * Indicate whether the operator address is an operator of the tokenHolder
      * address for the given partition.
      * @param partition Name of the partition.
      * @param operator Address which may be an operator of tokenHolder for the given partition.
@@ -1288,7 +1116,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /**************************************** Token Issuance ****************************************/
     /**
-     * @dev Perform the issuance of tokens.
+     * Perform the issuance of tokens.
      * @param operator Address which triggered the issuance.
      * @param to Token recipient.
      * @param value Number of tokens issued.
@@ -1299,7 +1127,6 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
         address to,
         uint256 value,
         bytes memory data
-    // ) internal isNotMigratedToken {
     ) internal {
         require(_isMultiple(value), "50"); // 0x50	transfer failure
         require(to != address(0), "57"); // 0x57	invalid receiver
@@ -1312,7 +1139,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Issue tokens from a specific partition.
+     * Issue tokens from a specific partition.
      * @param toPartition Name of the partition.
      * @param operator The address performing the issuance.
      * @param to Token recipient.
@@ -1336,7 +1163,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /*************************************** Token Redemption ***************************************/
     /**
-     * @dev Perform the token redemption.
+     * Perform the token redemption.
      * @param operator The address performing the redemption.
      * @param from Token holder whose tokens will be redeemed.
      * @param value Number of tokens to redeem.
@@ -1361,7 +1188,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Redeem tokens of a specific partition.
+     * Redeem tokens of a specific partition.
      * @param fromPartition Name of the partition.
      * @param operator The address performing the redemption.
      * @param from Token holder whose tokens will be redeemed.
@@ -1392,7 +1219,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Redeem tokens from a default partitions.
+     * Redeem tokens from a default partitions.
      * @param operator The address performing the redeem.
      * @param from Token holder.
      * @param value Number of tokens to redeem.
@@ -1440,71 +1267,9 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
 
     /************************************************************************************************/
 
-    /************************************** Transfer Validity ***************************************/
-    /**
-     * @dev Know the reason on success or failure based on the EIP-1066 application-specific status codes.
-     * @param payload Payload of the initial transaction.
-     * @param partition Name of the partition.
-     * @param operator The address performing the transfer.
-     * @param from Token holder.
-     * @param to Token recipient.
-     * @param value Number of tokens to transfer.
-     * @param data Information attached to the transfer. [CAN CONTAIN THE DESTINATION PARTITION]
-     * @param operatorData Information attached to the transfer, by the operator (if any).
-     * @return ESC (Ethereum Status Code) following the EIP-1066 standard.
-     * @return Additional bytes32 parameter that can be used to define
-     * application specific reason codes with additional details (for example the
-     * transfer restriction rule responsible for making the transfer operation invalid).
-     * @return Destination partition.
-     */
-    // function _canTransfer(
-    //     bytes memory payload,
-    //     bytes32 partition,
-    //     address operator,
-    //     address from,
-    //     address to,
-    //     uint256 value,
-    //     bytes memory data,
-    //     bytes memory operatorData
-    // )
-    //     internal
-    //     view
-    //     returns (
-    //         bytes1,
-    //         bytes32,
-    //         bytes32
-    //     )
-    // {
-    //     address checksImplementation =
-    //         interfaceAddr(address(this), ERC1400_TOKENS_CHECKER);
-
-    //     if ((checksImplementation != address(0))) {
-    //         return
-    //             IERC1400TokensChecker(checksImplementation)
-    //                 .canTransferByPartition(
-    //                 payload,
-    //                 partition,
-    //                 operator,
-    //                 from,
-    //                 to,
-    //                 value,
-    //                 data,
-    //                 operatorData
-    //             );
-    //     } else {
-    //         return (hex"00", "", partition);
-    //     }
-    // }
-
-    /************************************************************************************************/
-
-    /************************************************************************************************/
-    /************************ INTERNAL FUNCTIONS (ADDITIONAL - NOT MANDATORY) ***********************/
-    /************************************************************************************************/
-
     /************************************ Token controllers *****************************************/
     /**
-     * @dev Set list of token controllers.
+     * Set list of token controllers.
      * @param operators Controller addresses.
      */
     function _setControllers(address[] memory operators) internal {
@@ -1518,7 +1283,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /**
-     * @dev Set list of token partition controllers.
+     * Set list of token partition controllers.
      * @param partition Name of the partition.
      * @param operators Controller addresses.
      */
@@ -1536,71 +1301,3 @@ contract ERC1400 is IERC20, IERC1400, Ownable, MinterRole{
     }
 
     /************************************************************************************************/
-
-    /************************************** Token extension *****************************************/
-    /**
-     * @dev Set token extension contract address.
-     * The extension contract can for example verify "ERC1400TokensValidator" or "ERC1400TokensChecker" interfaces.
-     * If the extension is an "ERC1400TokensValidator", it will be called everytime a transfer is executed.
-     * @param extension Address of the extension contract.
-     * @param interfaceLabel Interface label of extension contract.
-     * @param removeOldExtensionRoles If set to 'true', the roles of the old extension(minter, controller) will be removed extension.
-     * @param addMinterRoleForExtension If set to 'true', the extension contract will be added as minter.
-     * @param addControllerRoleForExtension If set to 'true', the extension contract will be added as controller.
-     */
-    // function _setTokenExtension(
-    //     address extension,
-    //     string memory interfaceLabel,
-    //     bool removeOldExtensionRoles,
-    //     bool addMinterRoleForExtension,
-    //     bool addControllerRoleForExtension
-    // ) internal {
-    //     address oldExtension = interfaceAddr(address(this), interfaceLabel);
-
-    //     if (oldExtension != address(0) && removeOldExtensionRoles) {
-    //         if (isMinter(oldExtension)) {
-    //             _removeMinter(oldExtension);
-    //         }
-    //         _isController[oldExtension] = false;
-    //     }
-
-    //     ERC1820Client.setInterfaceImplementation(interfaceLabel, extension);
-    //     if (addMinterRoleForExtension && !isMinter(extension)) {
-    //         _addMinter(extension);
-    //     }
-    //     if (addControllerRoleForExtension) {
-    //         _isController[extension] = true;
-    //     }
-    // }
-
-    /************************************************************************************************/
-
-    /************************************* Token migration ******************************************/
-    /**
-     * @dev Migrate contract.
-     *
-     * ===> CAUTION: DEFINITIVE ACTION
-     *
-     * This function shall be called once a new version of the smart contract has been created.
-     * Once this function is called:
-     *  - The address of the new smart contract is set in ERC1820 registry
-     *  - If the choice is definitive, the current smart contract is turned off and can never be used again
-     *
-     * @param newContractAddress Address of the new version of the smart contract.
-     * @param definitive If set to 'true' the contract is turned off definitely.
-     */
-    // function _migrate(address newContractAddress, bool definitive) internal {
-    //     ERC1820Client.setInterfaceImplementation(
-    //         ERC20_INTERFACE_NAME,
-    //         newContractAddress
-    //     );
-    //     ERC1820Client.setInterfaceImplementation(
-    //         ERC1400_INTERFACE_NAME,
-    //         newContractAddress
-    //     );
-    //     if (definitive) {
-    //         _migrated = true;
-    //     }
-    // }
-    /************************************************************************************************/
-}
